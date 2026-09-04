@@ -4,6 +4,6 @@
 .Ruserdata
 .DS_Store
 *.Rproj
-/dataframes/
+**/data/
 *.rds
 *.rda

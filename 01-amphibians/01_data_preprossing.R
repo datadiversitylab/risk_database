@@ -1,6 +1,6 @@
 library(dplyr)
 
-load("dataframes/full_data/df_ml_v2")
+load("01-amphibians/data/raw/full_data/df_ml_v2")
 
 amphibians_df <- df_ml %>% 
   filter(toupper(class) == "AMPHIBIA") 

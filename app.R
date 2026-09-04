@@ -3,7 +3,21 @@ library(bslib)
 library(DT)
 library(dplyr)
 
-df_preds <- read.csv("01-amphibians/data/processed/amphibians_final_predictions.csv")
+df_preds <- read.csv("01-amphibians/data/processed/dd_predictions.txt") %>%
+  mutate(
+    prob_threatened = threatened,
+    predicted_status = ifelse(prob_threatened >= 0.5, "Threatened", "Not_Threatened"),
+    group = case_when(
+      toupper(class) == "AMPHIBIA" ~ "amphibians",
+      toupper(class) == "REPTILIA" ~ "reptiles",
+      toupper(class) == "CHONDRICHTHYES" ~ "chondrichthyans",
+      toupper(class) == "MAMMALIA" ~ "mammals",
+      toupper(class) == "AVES" ~ "birds",
+      toupper(family) == "ORCHIDACEAE" ~ "orchids",
+      freshwater == TRUE ~ "freshwater",
+      TRUE ~ "other"
+    )
+  )
 
 if(! "prediction_date" %in% colnames(df_preds)) {
   df_preds$prediction_date <- "2026-03-04" 
@@ -19,6 +33,8 @@ ui <- page_sidebar(
   sidebar = sidebar(
     title = "Filters & Search",
     textInput("search_term", "Search by Scientific Name:", placeholder = "e.g., Atelopus..."),
+    selectInput("group_filter", "Filter by Taxonomic Group:",
+                choices = c("All", "amphibians", "reptiles", "chondrichthyans", "freshwater", "orchids", "birds", "mammals")),
     selectInput("status_filter", "Filter by Predicted Status:", 
                 choices = c("All", "Threatened", "Not_Threatened")),
     hr(),
@@ -26,7 +42,7 @@ ui <- page_sidebar(
   ),
   
   card(
-    card_header("Provisional Results - Amphibians (Data Deficient)") ,
+    card_header("Provisional Results - Global Assessment"),
     p(style = "color: #d9534f; font-weight: bold;", 
       "DISCLAIMER: This is a provisional, machine learning-based estimate and does not replace an official IUCN assessment."),
     DTOutput("table_results")
@@ -42,20 +58,24 @@ server <- function(input, output, session) {
       data <- data %>% filter(grepl(input$search_term, binomial, ignore.case = TRUE))
     }
     
+    if (input$group_filter != "All") {
+      data <- data %>% filter(group == input$group_filter)
+    }
+    
     if (input$status_filter != "All") {
       data <- data %>% filter(predicted_status == input$status_filter)
     }
-
-    data %>% select(binomial, predicted_status, prob_threatened, prediction_date, model_version)
+    
+    data %>% select(binomial, group, predicted_status, prob_threatened, prediction_date, model_version)
   })
-
+  
   output$table_results <- renderDT({
     datatable(filtered_data(), options = list(pageLength = 10, scrollX = TRUE))
   })
-
+  
   output$download_data <- downloadHandler(
     filename = function() {
-      paste("amphibians_predictions_", Sys.Date(), ".csv", sep = "")
+      paste("global_predictions_", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
       write.csv(df_preds, file, row.names = FALSE)

@@ -3,7 +3,7 @@ library(bslib)
 library(DT)
 library(dplyr)
 
-df_preds <- read.csv("dataframes/processed/amphibians_final_predictions.csv")
+df_preds <- read.csv("01-amphibians/data/processed/amphibians_final_predictions.csv")
 
 if(! "prediction_date" %in% colnames(df_preds)) {
   df_preds$prediction_date <- "2026-03-04" 

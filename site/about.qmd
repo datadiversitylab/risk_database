@@ -1,0 +1,31 @@
+---
+title: "About"
+---
+
+This resource is built and maintained by the Data Diversity Lab at the University of Arizona.
+
+## The gap this fills
+
+Several studies have shown that machine learning can assign provisional risk categories
+to unassessed and Data Deficient species, with accuracies close to expert assessment for
+the threatened and non threatened distinction. Each of those studies released its
+predictions as supplementary material for one taxonomic group at one point in time.
+
+## People
+
+::: {layout-ncol=2}
+![Julia Dias, Ph.D. student](assets/julia.jpg)
+
+![Cristian Román, Assistant Professor](assets/cristian.jpg)
+:::
+
+## Relationship to IUCN
+
+We are not affiliated with IUCN. This site stores and serves no IUCN Red List data.
+Every species page links to the IUCN entry so that the authoritative assessment.
+The IUCN Red List is only used under its terms for training and validating our models
+
+## Contact
+
+[Lab website](https://datadiversitylab.github.io)
+

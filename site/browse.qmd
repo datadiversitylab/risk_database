@@ -1,0 +1,30 @@
+---
+title: "Browse"
+---
+
+::: {.disclaimer}
+Provisional model estimates, not IUCN assessments.
+:::
+
+```{=html}
+<div class="filters">
+  <input id="q" type="text" placeholder="Species name" style="min-width:260px">
+  <select id="group"><option value="">All groups</option></select>
+  <select id="status"><option value="">Any predicted status</option></select>
+  <label style="align-self:center">
+    Minimum probability
+    <input id="minp" type="number" min="0" max="1" step="0.05" value="0" style="width:5rem">
+  </label>
+  <label style="align-self:center">
+    <input id="lowonly" type="checkbox"> Only where models disagree
+  </label>
+</div>
+
+<p id="count" style="color:#667"></p>
+<div id="table"></div>
+
+<script src="table.js"></script>
+<script>
+loadIndex(function (data) { renderControls(data); renderTable(data); });
+</script>
+```

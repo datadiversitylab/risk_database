@@ -4,6 +4,8 @@
 .Ruserdata
 .DS_Store
 *.Rproj
-**/data/
 *.rds
 *.rda
+.positai
+*/data/raw/*
+!*/data/raw/.gitkeep

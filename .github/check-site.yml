@@ -1,0 +1,40 @@
+# Renders the site on pull requests without publishing it
+# Catches a broken build before it reaches the live site
+
+name: Check site
+
+on:
+  pull_request:
+    paths:
+      - "site/**"
+      - "*/data/processed/**"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install R dependencies
+        run: install.packages("jsonlite")
+        shell: Rscript {0}
+
+      - name: Build site data
+        working-directory: site
+        run: Rscript build.R
+
+      - name: Report what was built
+        working-directory: site
+        run: |
+          echo "Species files: $(ls data/species 2>/dev/null | wc -l)"
+          cat data/release.json 2>/dev/null || echo "No release file"
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render
+        run: quarto render site

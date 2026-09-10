@@ -1,0 +1,92 @@
+/*-- scss:defaults --*/
+
+$teal:        #14746f;
+$teal-dark:   #0d4f4b;
+$teal-light:  #e6f2f1;
+
+$primary:     $teal;
+$link-color:  $teal;
+$body-color:  #1f2933;
+$font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+/*-- scss:rules --*/
+
+.navbar {
+  background-color: $teal !important;
+}
+.navbar .navbar-brand,
+.navbar .nav-link {
+  color: #ffffff !important;
+}
+.navbar .nav-link:hover {
+  color: $teal-light !important;
+}
+
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.disclaimer {
+  background: $teal-light;
+  border-left: 4px solid $teal;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.filters input,
+.filters select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccd4d3;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+table.results th {
+  text-align: left;
+  border-bottom: 2px solid $teal;
+  padding: 0.5rem 0.4rem;
+}
+table.results td {
+  border-bottom: 1px solid #eceff1;
+  padding: 0.45rem 0.4rem;
+}
+table.results tr:hover { background: $teal-light; }
+
+.flag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  background: #f3f1e9;
+  color: #7a6a2f;
+}
+
+.prob-bar {
+  display: inline-block;
+  height: 0.6rem;
+  background: $teal;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.species-header { border-bottom: 2px solid $teal; padding-bottom: 0.5rem; }
+.species-header .binomial { font-style: italic; }
+
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: #667;
+  background: #fafbfb;
+  border-radius: 6px;
+}

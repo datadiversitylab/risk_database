@@ -1,0 +1,30 @@
+---
+title: "Groups"
+---
+
+Coverage and model runs for each taxonomic group in the current release. Groups are
+added one at a time.
+
+```{=html}
+<div id="groups"></div>
+<script>
+fetch('data/groups.json').then(r => r.json()).then(d => {
+  const el = document.getElementById('groups');
+  if (!d.length) {
+    el.innerHTML = '<div class="empty">No groups published yet.</div>';
+    return;
+  }
+  el.innerHTML = '<table class="results"><thead><tr><th>Group</th><th>Species</th>' +
+    '<th>Models</th><th>Runs</th></tr></thead><tbody>' +
+    d.map(g => '<tr><td>' + g.group + '</td><td>' + g.n_species.toLocaleString() + '</td>' +
+      '<td>' + [].concat(g.models).join(', ') + '</td>' +
+      '<td>' + [].concat(g.dates).join(', ') + '</td></tr>').join('') +
+    '</tbody></table>';
+}).catch(() => {
+  document.getElementById('groups').innerHTML =
+    '<div class="empty">No data yet. Run <code>build.R</code>.</div>';
+});
+</script>
+```
+
+When available, cross validation performance for each model is reported in the repository alongside the predictions. Performance is given separately for threatened and non threatened species.

@@ -1,0 +1,90 @@
+---
+title: "Species"
+---
+
+```{=html}
+<div id="page"></div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+const page = document.getElementById('page');
+
+if (!id) {
+  page.innerHTML = '<div class="empty">No species selected. ' +
+    'Start from <a href="browse.html">Browse</a>.</div>';
+} else {
+  fetch('data/species/' + id + '.json')
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(render)
+    .catch(() => {
+      page.innerHTML = '<div class="empty">No record found for this identifier.</div>';
+    });
+}
+
+function render(d) {
+  const tax = [d.taxonomy.class, d.taxonomy.order, d.taxonomy.family]
+    .filter(x => x && x !== 'NA').join(' &rsaquo; ');
+
+  const preds = d.predictions.map(p =>
+    '<tr><td>' + p.model + '</td><td>' + (p.date || '') + '</td>' +
+    '<td>' + p.status + '</td><td>' + (p.prob != null ? p.prob.toFixed(3) : '') + '</td></tr>'
+  ).join('');
+
+  page.innerHTML =
+    '<div class="species-header"><h2 class="binomial">' + d.species + '</h2>' +
+    (tax ? '<p style="color:#667;margin:0">' + tax + '</p>' : '') + '</div>' +
+
+    '<div class="disclaimer">This is a provisional model estimate, not an IUCN ' +
+    'assessment. It should not be cited as this species\' conservation status.</div>' +
+
+    '<h3>Consensus</h3>' +
+    '<p>Predicted <strong>' + d.consensus_status + '</strong>, median probability of being ' +
+    'threatened <strong>' + (d.consensus_prob != null ? d.consensus_prob.toFixed(2) : 'NA') +
+    '</strong>, from ' + d.n_models + ' model run' + (d.n_models === 1 ? '' : 's') + '.</p>' +
+    (d.low_confidence
+      ? '<p><span class="flag">models disagree</span> The spread across runs is ' +
+        d.spread.toFixed(2) + '. Read the individual predictions below before using this number.</p>'
+      : '') +
+
+    '<h3>Every prediction for this species</h3>' +
+    '<table class="results"><thead><tr><th>Model</th><th>Date</th>' +
+    '<th>Predicted</th><th>Probability</th></tr></thead><tbody>' + preds + '</tbody></table>' +
+
+    '<h3>Elsewhere</h3>' +
+    '<p><a href="https://www.iucnredlist.org/search?query=' +
+    encodeURIComponent(d.species) + '" target="_blank" rel="noopener">' +
+    'Look this species up on the IUCN Red List</a></p>' +
+
+    '<div id="photo"></div>' +
+
+    '<h3>Citation</h3>' +
+    '<p style="font-size:0.9rem">Predicted extinction risk database, release <span id="rel"></span>. ' +
+    'Entry for <em>' + d.species + '</em>.</p>';
+
+  fetch('data/release.json').then(r => r.json()).then(rel => {
+    document.getElementById('rel').textContent = rel.version + ' (' + rel.date + ')';
+  }).catch(() => {});
+
+  loadPhoto(d.species);
+}
+
+// Photographs are fetched by the visitor's browser from iNaturalist and never stored
+// here, which keeps the licensing with the photographer where it belongs
+function loadPhoto(name) {
+  fetch('https://api.inaturalist.org/v1/taxa?q=' + encodeURIComponent(name) + '&rank=species&per_page=1')
+    .then(r => r.json())
+    .then(j => {
+      const t = j.results && j.results[0];
+      if (!t || !t.default_photo) return;
+      const p = t.default_photo;
+      document.getElementById('photo').innerHTML =
+        '<h3>Photograph</h3><img src="' + p.medium_url + '" alt="' + name +
+        '" style="max-width:100%;border-radius:6px">' +
+        '<p style="font-size:0.85rem;color:#667">' + (p.attribution || '') +
+        ' Served by iNaturalist.</p>';
+    })
+    .catch(() => {});
+}
+</script>
+```

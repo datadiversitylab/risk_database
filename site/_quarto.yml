@@ -1,0 +1,37 @@
+project:
+  type: website
+  output-dir: _site
+  resources:
+    - data/**
+
+website:
+  title: "Predicted extinction risk"
+  description: "Model based estimates of extinction risk for unassessed and Data Deficient species"
+  navbar:
+    logo: assets/logo.png
+    left:
+      - href: index.qmd
+        text: Home
+      - href: browse.qmd
+        text: Browse
+      - href: priority.qmd
+        text: Priority
+      - href: groups.qmd
+        text: Groups
+      - href: downloads.qmd
+        text: Downloads
+      - href: methods.qmd
+        text: Methods
+      - href: about.qmd
+        text: About
+  page-footer:
+    left: "Provisional model estimates. Not IUCN assessments."
+    right: "[Repository](https://github.com/datadiversitylab/risk_database)"
+
+format:
+  html:
+    theme:
+      - cosmo
+      - custom.scss
+    toc: false
+    include-in-header: umami.html

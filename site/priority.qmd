@@ -1,0 +1,36 @@
+---
+title: "Priority list"
+---
+
+::: {.disclaimer}
+Provisional model estimates, not IUCN assessments. This ranking is meant to direct
+assessment effort, not to stand in for it.
+:::
+
+Species ranked by the median predicted probability of being threatened, across every
+model that has been run for them. Species where models disagree are flagged, and a flag
+is a reason to look at the species page before acting on the number.
+
+```{=html}
+<div class="filters">
+  <select id="group"><option value="">All groups</option></select>
+  <label style="align-self:center">
+    Show top
+    <input id="topn" type="number" min="10" max="1000" step="10" value="100" style="width:5rem">
+  </label>
+  <label style="align-self:center">
+    <input id="hidelow" type="checkbox"> Hide species where models disagree
+  </label>
+</div>
+
+<p id="count" style="color:#667"></p>
+<div id="table"></div>
+
+<script src="table.js"></script>
+<script>
+loadIndex(function (data) {
+  renderControls(data, { priority: true });
+  renderTable(data, { priority: true });
+});
+</script>
+```

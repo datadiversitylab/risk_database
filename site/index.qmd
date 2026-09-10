@@ -1,0 +1,69 @@
+---
+title: "Predicted extinction risk"
+---
+
+::: {.disclaimer}
+Everything on this site is a provisional, model based estimate. None of it is an IUCN
+assessment, and none of it should be cited as a species' conservation status.
+:::
+
+Many described species have never been evaluated for the IUCN Red List, and many of
+those that have been evaluated are listed as Data Deficient. Data Deficient does not
+mean a species is safe. It means the evidence was not enough to decide. Species in
+that position are generally left out of conservation planning for reasons that have 
+nothing to do with their actual risk.
+
+This site holds model based predictions of extinction risk for those species. The
+methods come from published work, principally IUCNN.
+
+```{=html}
+<div id="release"></div>
+<script>
+fetch('data/release.json').then(r => r.json()).then(d => {
+  const el = document.getElementById('release');
+  if (!d.n_species) {
+    el.innerHTML = '<div class="empty">No predictions published yet. ' +
+      'Run <code>build.R</code> once prediction files exist.</div>';
+    return;
+  }
+  el.innerHTML = '<p><strong>' + d.n_species.toLocaleString() + '</strong> species across <strong>' +
+    d.n_groups + '</strong> groups, from <strong>' + d.n_models + '</strong> models. ' +
+    'Release ' + d.version + ', ' + d.date + '.</p>';
+}).catch(() => {
+  document.getElementById('release').innerHTML =
+    '<div class="empty">No data yet. Run <code>build.R</code>.</div>';
+});
+</script>
+
+<div class="filters">
+  <input id="q" type="text" placeholder="Search a scientific name" style="min-width:320px">
+</div>
+<div id="quick"></div>
+
+<script>
+let INDEX = [];
+fetch('data/index.json').then(r => r.json()).then(d => { INDEX = d; });
+
+document.getElementById('q').addEventListener('input', function () {
+  const term = this.value.trim().toLowerCase();
+  const box = document.getElementById('quick');
+  if (term.length < 3) { box.innerHTML = ''; return; }
+  const hits = INDEX.filter(s => s.species.toLowerCase().includes(term)).slice(0, 15);
+  if (!hits.length) { box.innerHTML = '<p>Nothing found.</p>'; return; }
+  box.innerHTML = '<ul>' + hits.map(s =>
+    '<li><a href="species.html?id=' + s.id + '"><em>' + s.species + '</em></a> ' +
+    '<span style="color:#667">' + s.group + '</span></li>').join('') + '</ul>';
+});
+</script>
+```
+
+## How to use this
+
+The [priority list](priority.qmd) ranks species by how likely the models think they are
+to be threatened.
+
+[Browse](browse.qmd) filters the whole database. [Groups](groups.qmd) reports how each
+model performed on species that do have assessments.
+
+Each species page shows every prediction made for that species. We highlight instances
+where models disagree.

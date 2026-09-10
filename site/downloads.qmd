@@ -1,0 +1,37 @@
+---
+title: "Downloads"
+---
+
+Everything on this site comes from files in our repository. You can download all
+our data.
+
+## Predictions
+
+Prediction files live in the repository under each group folder, named by model and
+date. They are plain CSV with one row per species.
+
+[Repository](https://github.com/datadiversitylab/risk_database)
+
+## The site data
+
+The JSON the site reads is served alongside it, so it works as an API without any
+further setup.
+
+`data/index.json` holds one entry per species, with the consensus prediction.
+
+`data/species/<id>.json` holds the full record for one species, including every
+prediction made for it.
+
+`data/groups.json` and `data/release.json` hold coverage and release metadata.
+
+## Citing a release
+
+Cite the release you used, not the site in general. Predictions change between releases,
+and a citation without a version cannot be checked later.
+
+Each release is archived with a DOI at [TBD].
+
+## What is not here
+
+No IUCN Red List data is stored or served by this site. Assessments, categories,
+narratives, threat codes, and range polygons are available within the IUCN.

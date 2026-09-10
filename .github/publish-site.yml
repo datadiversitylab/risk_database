@@ -1,0 +1,48 @@
+# Builds the site data from the prediction CSVs and publishes to GitHub Pages
+# Runs on pushes that touch the site or any prediction file, and can be run by hand
+
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "*/data/processed/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Public RSPM serves Linux binaries, which installs jsonlite in seconds
+      # rather than compiling it
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install R dependencies
+        run: install.packages("jsonlite")
+        shell: Rscript {0}
+
+      # Writes site/data from every CSV under the group folders listed in _config.R
+      # Succeeds with empty output when no predictions exist yet
+      - name: Build site data
+        working-directory: site
+        run: Rscript build.R
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render and publish
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages
+          path: site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

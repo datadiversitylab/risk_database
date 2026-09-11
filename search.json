@@ -1,0 +1,170 @@
+[
+  {
+    "objectID": "groups.html",
+    "href": "groups.html",
+    "title": "Groups",
+    "section": "",
+    "text": "Coverage and model runs for each taxonomic group in the current release. Groups are added one at a time.\n\n\nWhen available, cross validation performance for each model is reported in the repository alongside the predictions. Performance is given separately for threatened and non threatened species."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "This resource is built and maintained by the Data Diversity Lab at the University of Arizona."
+  },
+  {
+    "objectID": "about.html#the-gap-this-fills",
+    "href": "about.html#the-gap-this-fills",
+    "title": "About",
+    "section": "The gap this fills",
+    "text": "The gap this fills\nSeveral studies have shown that machine learning can assign provisional risk categories to unassessed and Data Deficient species, with accuracies close to expert assessment for the threatened and non threatened distinction. Each of those studies released its predictions as supplementary material for one taxonomic group at one point in time."
+  },
+  {
+    "objectID": "about.html#people",
+    "href": "about.html#people",
+    "title": "About",
+    "section": "People",
+    "text": "People\n\n\n\n\n\n\nJulia Dias, Ph.D. student\n\n\n\n\n\n\n\nCristian Román, Assistant Professor"
+  },
+  {
+    "objectID": "about.html#relationship-to-iucn",
+    "href": "about.html#relationship-to-iucn",
+    "title": "About",
+    "section": "Relationship to IUCN",
+    "text": "Relationship to IUCN\nWe are not affiliated with IUCN. This site stores and serves no IUCN Red List data. Every species page links to the IUCN entry so that the authoritative assessment. The IUCN Red List is only used under its terms for training and validating our models"
+  },
+  {
+    "objectID": "about.html#contact",
+    "href": "about.html#contact",
+    "title": "About",
+    "section": "Contact",
+    "text": "Contact\nLab website"
+  },
+  {
+    "objectID": "browse.html",
+    "href": "browse.html",
+    "title": "Browse",
+    "section": "",
+    "text": "Provisional model estimates, not IUCN assessments.\n\n\n  \n  All groups\n  Any predicted status\n  \n    Minimum probability\n    \n  \n  \n     Only where models disagree"
+  },
+  {
+    "objectID": "methods.html",
+    "href": "methods.html",
+    "title": "Methods",
+    "section": "",
+    "text": "Each prediction is the output of a model trained on species that already have IUCN assessments, applied to species that do not. The methods come from published work, principally IUCNN. We did not develop a new method."
+  },
+  {
+    "objectID": "methods.html#what-these-numbers-are",
+    "href": "methods.html#what-these-numbers-are",
+    "title": "Methods",
+    "section": "",
+    "text": "Each prediction is the output of a model trained on species that already have IUCN assessments, applied to species that do not. The methods come from published work, principally IUCNN. We did not develop a new method."
+  },
+  {
+    "objectID": "methods.html#what-a-probability-means",
+    "href": "methods.html#what-a-probability-means",
+    "title": "Methods",
+    "section": "What a probability means",
+    "text": "What a probability means\nprob_threatened is the model’s estimate that a species would fall into a threatened category if it were formally assessed. It is not a probability of extinction, and it is not a substitute for the criteria IUCN applies."
+  },
+  {
+    "objectID": "methods.html#why-several-predictions-per-species",
+    "href": "methods.html#why-several-predictions-per-species",
+    "title": "Methods",
+    "section": "Why several predictions per species",
+    "text": "Why several predictions per species\nA species may be run through more than one model, and models are re run as data improve. We keep results for every run is kept. The species page shows all of them rather than one. We think that agreement between independent runs is information on its own. Yet, the consensus figure is the median across runs. The spread is the standard deviation."
+  },
+  {
+    "objectID": "methods.html#training-and-evaluation",
+    "href": "methods.html#training-and-evaluation",
+    "title": "Methods",
+    "section": "Training and evaluation",
+    "text": "Training and evaluation\nModels are trained on assessed species and evaluated with spatially blocked cross validation rather than a random split. Species that occur near each other share climate, sampling effort, and often conservation status, so a random split lets information pass between training and test data and inflates the apparent accuracy.\nPerformance is reported separately for threatened and non threatened species."
+  },
+  {
+    "objectID": "methods.html#versioning",
+    "href": "methods.html#versioning",
+    "title": "Methods",
+    "section": "Versioning",
+    "text": "Versioning\nPredictions are never edited in place. A new release adds new files and the previous release stays available. The changelog records what moved."
+  },
+  {
+    "objectID": "methods.html#limits-worth-knowing",
+    "href": "methods.html#limits-worth-knowing",
+    "title": "Methods",
+    "section": "Limits worth knowing",
+    "text": "Limits worth knowing\nPredictions rest on occurrence data, and occurrence data reflects where people have looked as much as where species are. Poorly sampled regions and poorly collected taxa carry more uncertainty than the probability alone suggests.\nThese estimates are meant to direct assessment effort and research attention."
+  },
+  {
+    "objectID": "priority.html",
+    "href": "priority.html",
+    "title": "Priority list",
+    "section": "",
+    "text": "Provisional model estimates, not IUCN assessments. This ranking is meant to direct assessment effort, not to stand in for it.\n\nSpecies ranked by the median predicted probability of being threatened, across every model that has been run for them. Species where models disagree are flagged, and a flag is a reason to look at the species page before acting on the number.\n\n  All groups\n  \n    Show top\n    \n  \n  \n     Hide species where models disagree"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Predicted extinction risk",
+    "section": "",
+    "text": "Everything on this site is a provisional, model based estimate. None of it is an IUCN assessment, and none of it should be cited as a species’ conservation status.\nMany described species have never been evaluated for the IUCN Red List, and many of those that have been evaluated are listed as Data Deficient. Data Deficient does not mean a species is safe. It means the evidence was not enough to decide. Species in that position are generally left out of conservation planning for reasons that have nothing to do with their actual risk.\nThis site holds model based predictions of extinction risk for those species. The methods come from published work, principally IUCNN."
+  },
+  {
+    "objectID": "index.html#how-to-use-this",
+    "href": "index.html#how-to-use-this",
+    "title": "Predicted extinction risk",
+    "section": "How to use this",
+    "text": "How to use this\nThe priority list ranks species by how likely the models think they are to be threatened.\nBrowse filters the whole database. Groups reports how each model performed on species that do have assessments.\nEach species page shows every prediction made for that species. We highlight instances where models disagree."
+  },
+  {
+    "objectID": "downloads.html",
+    "href": "downloads.html",
+    "title": "Downloads",
+    "section": "",
+    "text": "Everything on this site comes from files in our repository. You can download all our data."
+  },
+  {
+    "objectID": "downloads.html#predictions",
+    "href": "downloads.html#predictions",
+    "title": "Downloads",
+    "section": "Predictions",
+    "text": "Predictions\nPrediction files live in the repository under each group folder, named by model and date. They are plain CSV with one row per species.\nRepository"
+  },
+  {
+    "objectID": "downloads.html#the-site-data",
+    "href": "downloads.html#the-site-data",
+    "title": "Downloads",
+    "section": "The site data",
+    "text": "The site data\nThe JSON the site reads is served alongside it, so it works as an API without any further setup.\ndata/index.json holds one entry per species, with the consensus prediction.\ndata/species/&lt;id&gt;.json holds the full record for one species, including every prediction made for it.\ndata/groups.json and data/release.json hold coverage and release metadata."
+  },
+  {
+    "objectID": "downloads.html#citing-a-release",
+    "href": "downloads.html#citing-a-release",
+    "title": "Downloads",
+    "section": "Citing a release",
+    "text": "Citing a release\nCite the release you used, not the site in general. Predictions change between releases, and a citation without a version cannot be checked later.\nEach release is archived with a DOI at [TBD]."
+  },
+  {
+    "objectID": "downloads.html#what-is-not-here",
+    "href": "downloads.html#what-is-not-here",
+    "title": "Downloads",
+    "section": "What is not here",
+    "text": "What is not here\nNo IUCN Red List data is stored or served by this site. Assessments, categories, narratives, threat codes, and range polygons are available within the IUCN."
+  },
+  {
+    "objectID": "changelog.html",
+    "href": "changelog.html",
+    "title": "Changelog",
+    "section": "",
+    "text": "What changed between releases. Please cite the release you used."
+  },
+  {
+    "objectID": "changelog.html#v0.1",
+    "href": "changelog.html#v0.1",
+    "title": "Changelog",
+    "section": "v0.1",
+    "text": "v0.1\nFirst release."
+  }
+]

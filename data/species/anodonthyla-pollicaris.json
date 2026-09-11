@@ -1,0 +1,1 @@
+{"id":"anodonthyla-pollicaris","species":"Anodonthyla pollicaris","group":"01-amphibians","taxonomy":{"class":"AMPHIBIA","order":null,"family":"MICROHYLIDAE"},"consensus_prob":0.864,"consensus_status":"Threatened","spread":0,"low_confidence":false,"n_models":1,"predictions":[{"model":"amphibians_test","date":null,"status":"Threatened","prob":0.864}]}

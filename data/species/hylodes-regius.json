@@ -1,0 +1,1 @@
+{"id":"hylodes-regius","species":"Hylodes regius","group":"01-amphibians","taxonomy":{"class":"AMPHIBIA","order":null,"family":"HYLODIDAE"},"consensus_prob":0.274,"consensus_status":"Not_Threatened","spread":0,"low_confidence":false,"n_models":1,"predictions":[{"model":"amphibians_test","date":null,"status":"Not_Threatened","prob":0.274}]}

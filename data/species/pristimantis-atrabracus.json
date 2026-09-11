@@ -1,0 +1,1 @@
+{"id":"pristimantis-atrabracus","species":"Pristimantis atrabracus","group":"01-amphibians","taxonomy":{"class":"AMPHIBIA","order":null,"family":"CRAUGASTORIDAE"},"consensus_prob":0.324,"consensus_status":"Not_Threatened","spread":0,"low_confidence":false,"n_models":1,"predictions":[{"model":"amphibians_test","date":null,"status":"Not_Threatened","prob":0.324}]}

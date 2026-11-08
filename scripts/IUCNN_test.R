@@ -16,7 +16,7 @@ labels_train <- iucnn_prepare_labels(x = training_labels,
 features_predict <- iucnn_prepare_features(prediction_occ) # Prediction features
 
 # 2. Model training
-m1 <- iucnn_train_model(x = features, lab = labels_train)
+m1 <- iucnn_train_model(x = features, lab = labels_train, path_to_output = "C:/risk_database/output/05-orchids/model_01")
 
 summary(m1)
 plot(m1)

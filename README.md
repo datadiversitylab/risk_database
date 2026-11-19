@@ -8,7 +8,6 @@ risk_database/
 │   ├── amphibians/
 │   ├── reptiles/
 │   ├── chondrichthyans/
-│   ├── freshwater/
 │   ├── orchids/
 │   │   ├── training_occ.csv
 │   │   ├── training_labels.csv

@@ -12,3 +12,5 @@
 /input/official/
 /input/human_footprint/
 *.keras
+input/*/cache/
+input/*/training_labels.csv

@@ -1,11 +1,12 @@
 library(tidyverse)
 library(here)
-#library(remotes)
-#install_github("IUCNN/IUCNN")
 library(IUCNN)
 library(reticulate)
 
-use_condaenv("r-reticulate", required = TRUE)
+#Instructions: https://github.com/IUCNN/IUCNN
+
+#use_condaenv("r-reticulate", required = TRUE) #Julia's version in the server
+use_condaenv("iucnn") #from the tutorial
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -14,6 +15,19 @@ max_epochs_bnn <- if (length(args) > 0) {
 } else {
   1000000L
 }
+
+# Tests overwrite output/test, releases create a new numbered version
+run_mode <- if (length(args) > 1) args[2] else "test"
+
+stopifnot(run_mode %in% c("test", "release"))
+
+# IUCNN asks for the BNN generations with readline() and ignores max_epochs, so this copy of iucnn_train_model answers from max_epochs_bnn and says "Y" to the warning about fewer than 1M generations
+bnn_env <- new.env(parent = asNamespace("IUCNN"))
+bnn_env$readline <- function(prompt = "") {
+  if (prompt == "") as.character(max_epochs_bnn) else "Y"
+}
+train_model <- iucnn_train_model
+environment(train_model) <- bnn_env
 
 # Large files need more than the default 60 s
 options(timeout = max(3600, getOption("timeout")))
@@ -98,11 +112,76 @@ folders <- input_dirs[has_data]
 
 stopifnot(length(folders) > 0)
 
-for (folder in folders) {
+# Input fingerprint, paths are relative to input/
+input_files <- c(
+  file.path(rep(folders, each = length(required_files)), required_files),
+  file.path("official", list.files(wwf_source)),
+  file.path("human_footprint", basename(footprint_files))
+)
+
+manifest <- data.frame(
+  file = input_files,
+  md5 = unname(tools::md5sum(here("input", input_files)))
+)
+
+# Output location and folders to run
+releases_dir <- here("output", "releases")
+releases_log <- file.path(releases_dir, "releases.csv")
+
+to_run <- folders
+
+if (run_mode == "test") {
+  
+  out_root <- here("output", "test")
+  
+} else {
+  
+  dir.create(releases_dir, recursive = TRUE, showWarnings = FALSE)
+  
+  log <- if (file.exists(releases_log)) read.csv(releases_log) else NULL
+  release_number <- if (is.null(log)) 1L else max(log$number) + 1L
+  release_version <- paste0("v", release_number)
+  
+  # Only groups whose inputs changed are retrained, shared layers affect all groups
+  if (!is.null(log)) {
+    previous <- tail(log$version, 1)
+    old <- read.csv(file.path(releases_dir, previous, "manifest.csv"))
+    
+    new_keys <- paste(manifest$file, manifest$md5)
+    old_keys <- paste(old$file, old$md5)
+    changed <- c(setdiff(new_keys, old_keys), setdiff(old_keys, new_keys))
+    
+    if (length(changed) == 0) {
+      stop("Inputs have not changed since ", previous, ", no new release")
+    }
+    
+    changed_groups <- unique(sub("/.*", "", changed))
+    
+    if (!any(c("official", "human_footprint") %in% changed_groups)) {
+      to_run <- intersect(folders, changed_groups)
+    }
+  }
+  
+  # Built under a temporary name so a failed run never looks like a release
+  out_root <- file.path(releases_dir, paste0(".", release_version, "_incomplete"))
+  unlink(out_root, recursive = TRUE)
+  dir.create(out_root, recursive = TRUE)
+  
+  # Unchanged groups are carried over from the previous release
+  for (folder in setdiff(folders, to_run)) {
+    stopifnot(file.copy(
+      file.path(releases_dir, previous, folder),
+      out_root,
+      recursive = TRUE
+    ))
+  }
+}
+
+for (folder in to_run) {
   
   message("Running ", folder)
   
-  dir.create(here("output", folder), recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(out_root, folder), recursive = TRUE, showWarnings = FALSE)
   
   #Load data
   training_occ <- read.csv(here("input", folder, "training_occ.csv"))
@@ -121,16 +200,16 @@ for (folder in folders) {
   for (i in seq_along(models)) {
     
     model_type <- models[i]
-    model_path <- here("output", folder, model_type)
+    model_path <- file.path(out_root, folder, model_type)
     
     # Train model
-    m1 <- iucnn_train_model(
+    m1 <- train_model(
       x = features,
       lab = labels_train,
       mode = model_type,
       path_to_output = model_path,
       max_epochs = if (model_type == "bnn-class") max_epochs_bnn else 1000,
-      overwrite = FALSE
+      overwrite = run_mode == "test"
     )
     
     summary(m1)
@@ -185,16 +264,38 @@ for (folder in folders) {
     # Save CSV
     write.csv(
       results,
-      here("output", folder,
-           paste0("predictions_", model_type, ".csv")),
+      file.path(out_root, folder,
+                paste0("predictions_", model_type, ".csv")),
       row.names = FALSE
     )
     
     # Save complete predictions
     saveRDS(
       pred,
-      here("output", folder,
-           paste0("predictions_", model_type, ".rds"))
+      file.path(out_root, folder,
+                paste0("predictions_", model_type, ".rds"))
     )
   }
+}
+
+# Finalize release
+if (run_mode == "release") {
+  
+  write.csv(manifest, file.path(out_root, "manifest.csv"), row.names = FALSE)
+  writeLines(capture.output(sessionInfo()), file.path(out_root, "session_info.txt"))
+  
+  stopifnot(file.rename(out_root, file.path(releases_dir, release_version)))
+  
+  entry <- data.frame(
+    version = release_version,
+    number = release_number,
+    date = format(Sys.Date()),
+    max_epochs_bnn = max_epochs_bnn,
+    iucnn_version = as.character(packageVersion("IUCNN")),
+    groups_rerun = paste(to_run, collapse = ";")
+  )
+  
+  write.csv(rbind(log, entry), releases_log, row.names = FALSE)
+  
+  message("Released ", release_version)
 }

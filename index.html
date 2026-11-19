@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUCNN risk database</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --ink: #1f2933; --muted: #616e7c; --line: #e4e7eb; --bg: #fafbfc; --accent: #2f6f5e;
+    --CR: #d81e05; --EN: #fc7f3f; --VU: #f9e814; --NT: #cce226; --LC: #60c659; --TH: #c0392b; --NTH: #7fb77e; --OTHER: #9aa5b1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 40px 0 12px; }
+  h3 { font-size: 15px; margin: 24px 0 8px; }
+  p { margin: 0 0 8px; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .note { margin-top: 16px; padding: 10px 14px; border-left: 4px solid var(--TH); background: #fff; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: #f5f7fa; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; min-width: 34px; padding: 1px 6px; border-radius: 3px; font-size: 12px; font-weight: 600; text-align: center; color: #1f2933; }
+  .chip.empty { background: none; color: var(--muted); border: 1px dashed var(--line); }
+  .conf { font-size: 12px; color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .legend .chip { margin-right: 6px; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  input[type=search], select { font: inherit; padding: 6px 8px; border: 1px solid #cbd2d9; border-radius: 4px; background: #fff; }
+  input[type=search] { width: 240px; }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #fff; cursor: pointer; }
+  button.plain { background: #fff; color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 8px; }
+  .species { font-style: italic; }
+  .flag { font-size: 12px; color: var(--TH); margin-left: 6px; }
+  ul.files { padding-left: 18px; margin: 0; }
+  footer { margin-top: 48px; font-size: 13px; color: var(--muted); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1><a href="#" style="color:inherit;text-decoration:none">IUCNN risk database</a></h1>
+  <p class="muted">Predicted extinction risk for species without an IUCN Red List assessment, made with <a href="https://github.com/IUCNN/IUCNN">IUCNN</a>. <span id="release-info"></span></p>
+  <p class="note">These are provisional, machine learning predictions. They do not replace an official IUCN Red List assessment. Each species links to the IUCN Red List and to GBIF.</p>
+
+  <section id="home">
+    <h2>Summary</h2>
+    <table id="summary"></table>
+    <p class="legend muted" id="legend" style="margin-top:8px"></p>
+
+    <h2>Species</h2>
+    <div class="controls">
+      <input type="search" id="search" placeholder="Search species or genus">
+      <select id="group"></select>
+      <select id="status"></select>
+      <label><input type="checkbox" id="disagree"> Models disagree</label>
+      <label><input type="checkbox" id="changed"> Changed since previous release</label>
+      <button id="download">Download selection (CSV)</button>
+    </div>
+    <p class="muted" id="count"></p>
+    <table id="species"></table>
+    <div class="pager">
+      <button class="plain" id="prev">Previous</button>
+      <span id="page"></span>
+      <button class="plain" id="next">Next</button>
+    </div>
+
+    <h2>Full downloads</h2>
+    <p class="muted">Complete predictions for the latest release, by group and model. Earlier releases are on each species page and in the repository under output/releases.</p>
+    <ul class="files" id="files"></ul>
+  </section>
+
+  <section id="detail" hidden></section>
+
+  <footer>
+    Please cite predictions with their release version. Taxonomy follows the GBIF Backbone Taxonomy. Release history: <a href="output/releases/releases.csv">releases.csv</a>.
+  </footer>
+</main>
+
+<script>
+const ROOT = "output/releases/";
+const MODELS = ["nn-class", "nn-reg", "bnn-class"];
+const SHARED = ["official", "human_footprint"];
+const THREATENED = ["CR", "EN", "VU", "Threatened"];
+const ORDER = ["CR", "EN", "VU", "NT", "LC", "Threatened", "Not Threatened"];
+const COLORS = { CR: "--CR", EN: "--EN", VU: "--VU", NT: "--NT", LC: "--LC", "Threatened": "--TH", "Not Threatened": "--NTH" };
+const PAGE_SIZE = 50;
+
+let releases = [];
+let groupsByVersion = {};
+let rows = [];
+let latest, previous;
+let selection = [];
+let page = 0;
+
+const $ = id => document.getElementById(id);
+
+// Minimal CSV parser for files written by R's write.csv
+function parseCSV(text) {
+  const out = [];
+  let row = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') quoted = false;
+      else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field.replace(/\r$/, "")); out.push(row); row = []; field = ""; }
+    else field += c;
+  }
+  if (field || row.length) { row.push(field); out.push(row); }
+  const header = out.shift();
+  return out.filter(r => r.length === header.length).map(r => Object.fromEntries(header.map((h, j) => [h, r[j]])));
+}
+
+async function getCSV(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(path);
+  return parseCSV(await res.text());
+}
+
+const label = g => g.replace(/^\d+-/, "");
+const color = s => `var(${COLORS[s] || "--OTHER"})`;
+const chip = s => s ? `<span class="chip" style="background:${color(s)}">${esc(s)}</span>` : `<span class="chip empty">·</span>`;
+const rank = s => ORDER.indexOf(s) === -1 ? ORDER.length : ORDER.indexOf(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const fmt = x => x === null ? "NA" : x.toFixed(2);
+const pct = (n, d) => d ? (100 * n / d).toFixed(1) + "%" : "NA";
+
+// Predictions are stored as row.preds[version][model] = { status, confidence }
+const get = (row, v, m) => row.preds[v] && row.preds[v][m];
+const statusesIn = (row, v) => MODELS.map(m => get(row, v, m)).filter(Boolean).map(p => p.status);
+const disagrees = row => new Set(statusesIn(row, latest)).size > 1;
+const changed = row => previous && row.preds[previous] && MODELS.some(m => get(row, latest, m) && get(row, previous, m) && get(row, latest, m).status !== get(row, previous, m).status);
+
+async function load() {
+  releases = await getCSV(ROOT + "releases.csv");
+  releases.sort((a, b) => a.number - b.number);
+  latest = releases[releases.length - 1].version;
+  previous = releases.length > 1 ? releases[releases.length - 2].version : null;
+  const byKey = {};
+
+  for (const r of releases) {
+    const manifest = await getCSV(`${ROOT}${r.version}/manifest.csv`);
+    const groups = [...new Set(manifest.map(m => m.file.split("/")[0]))].filter(g => !SHARED.includes(g)).sort();
+    groupsByVersion[r.version] = groups;
+
+    await Promise.all(groups.flatMap(g => MODELS.map(async m => {
+      let preds;
+      try { preds = await getCSV(`${ROOT}${r.version}/${g}/predictions_${m}.csv`); }
+      catch (e) { console.warn("Missing", e.message); return; }
+      for (const p of preds) {
+        const key = g + "|" + p.species;
+        byKey[key] = byKey[key] || { species: p.species, group: g, preds: {} };
+        byKey[key].preds[r.version] = byKey[key].preds[r.version] || {};
+        byKey[key].preds[r.version][m] = { status: p.predicted_status, confidence: p.confidence === "NA" ? null : Number(p.confidence) };
+      }
+    })));
+  }
+
+  rows = Object.values(byKey).sort((a, b) => a.species.localeCompare(b.species));
+
+  const r = releases[releases.length - 1];
+  $("release-info").textContent = `Latest release ${r.version}, ${r.date}, IUCNN ${r.iucnn_version}.`;
+  renderSummary();
+  renderFiles();
+  route();
+}
+
+function renderSummary() {
+  const current = rows.filter(r => r.preds[latest]);
+  const statuses = [...new Set(current.flatMap(r => statusesIn(r, latest)))].sort((a, b) => rank(a) - rank(b));
+
+  let html = `<tr><th>Group</th><th class="num">Species</th>${MODELS.map(m => `<th class="num">Threatened (${m})</th>`).join("")}<th class="num">Models agree</th><th class="num">Changed since ${previous || "previous"}</th></tr>`;
+  for (const g of groupsByVersion[latest]) {
+    const sub = current.filter(r => r.group === g);
+    if (!sub.length) continue;
+    const threatened = MODELS.map(m => {
+      const has = sub.filter(r => get(r, latest, m));
+      return pct(has.filter(r => THREATENED.includes(get(r, latest, m).status)).length, has.length);
+    });
+    html += `<tr><td>${label(g)}</td><td class="num">${sub.length.toLocaleString()}</td>${threatened.map(x => `<td class="num">${x}</td>`).join("")}<td class="num">${pct(sub.filter(r => !disagrees(r)).length, sub.length)}</td><td class="num">${previous ? sub.filter(changed).length.toLocaleString() : "NA"}</td></tr>`;
+  }
+  $("summary").innerHTML = html;
+  $("legend").innerHTML = statuses.map(chip).join("") + " Threatened means CR, EN, or VU.";
+
+  $("status").innerHTML = `<option value="">Any status</option>` + statuses.map(s => `<option value="${esc(s)}">${esc(s)} in any model</option>`).join("");
+  $("group").innerHTML = `<option value="">All groups</option>` + groupsByVersion[latest].map(g => `<option value="${g}">${label(g)}</option>`).join("");
+}
+
+function renderTable() {
+  const q = $("search").value.trim().toLowerCase();
+  const g = $("group").value, s = $("status").value;
+
+  selection = rows.filter(r => r.preds[latest]
+    && (!q || r.species.toLowerCase().includes(q))
+    && (!g || r.group === g)
+    && (!s || statusesIn(r, latest).includes(s))
+    && (!$("disagree").checked || disagrees(r))
+    && (!$("changed").checked || changed(r)));
+
+  const pages = Math.max(1, Math.ceil(selection.length / PAGE_SIZE));
+  page = Math.min(page, pages - 1);
+  const shown = selection.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  let html = `<tr><th>Species</th><th>Group</th>${MODELS.map(m => `<th>${m}</th>`).join("")}<th></th><th>Links</th></tr>`;
+  for (const r of shown) {
+    const name = encodeURIComponent(r.species);
+    const flags = [disagrees(r) ? "disagree" : "", changed(r) ? "changed" : ""].filter(Boolean).join(", ");
+    html += `<tr>
+      <td class="species"><a href="#${name}">${esc(r.species)}</a></td>
+      <td>${label(r.group)}</td>
+      ${MODELS.map(m => { const p = get(r, latest, m); return `<td>${chip(p && p.status)}${p ? `<span class="conf">${fmt(p.confidence)}</span>` : ""}</td>`; }).join("")}
+      <td><span class="flag">${flags}</span></td>
+      <td>${links(r.species)}</td>
+    </tr>`;
+  }
+  $("species").innerHTML = html;
+  $("count").textContent = `${selection.length.toLocaleString()} species in ${latest}. Numbers next to each category are model confidence.`;
+  $("page").textContent = `Page ${page + 1} of ${pages}`;
+  $("prev").disabled = page === 0;
+  $("next").disabled = page >= pages - 1;
+}
+
+function links(species) {
+  const name = encodeURIComponent(species);
+  return `<a href="https://www.iucnredlist.org/search?query=${name}&searchType=species" target="_blank" rel="noopener">IUCN</a> · <a href="https://www.gbif.org/species/search?q=${name}" target="_blank" rel="noopener">GBIF</a>`;
+}
+
+function renderFiles() {
+  $("files").innerHTML = groupsByVersion[latest].map(g =>
+    `<li>${label(g)}: ${MODELS.map(m => `<a href="${ROOT}${latest}/${g}/predictions_${m}.csv">${m}</a>`).join(" · ")}</li>`).join("");
+}
+
+// Species view with every model and release, one table per group the species belongs to
+function renderDetail(species) {
+  const matches = rows.filter(r => r.species === species);
+  if (!matches.length) {
+    $("detail").innerHTML = `<p><a href="#">Back to all species</a></p><h2>${esc(species)}</h2><p>No predictions for this name.</p>`;
+    return;
+  }
+
+  let html = `<p><a href="#">Back to all species</a></p><h2 class="species">${esc(species)}</h2><p>${links(species)}</p>`;
+  for (const r of matches) {
+    html += `<h3>${label(r.group)}</h3><table><tr><th>Release</th><th>Date</th>${MODELS.map(m => `<th>${m}</th>`).join("")}</tr>`;
+    for (const rel of releases.slice().reverse()) {
+      if (!r.preds[rel.version]) continue;
+      html += `<tr><td>${rel.version}</td><td>${rel.date}</td>${MODELS.map(m => { const p = get(r, rel.version, m); return `<td>${chip(p && p.status)}${p ? `<span class="conf">${fmt(p.confidence)}</span>` : ""}</td>`; }).join("")}</tr>`;
+    }
+    html += `</table>`;
+  }
+  html += `<p style="margin-top:12px"><button id="download-one">Download this species (CSV)</button></p>`;
+  $("detail").innerHTML = html;
+  $("download-one").onclick = () => download(matches, species.replace(/\s+/g, "_"));
+}
+
+// Long format: one line per species, group, release, and model
+function download(set, name) {
+  const header = ["species", "group", "release", "release_date", "model", "predicted_status", "confidence"];
+  const lines = [];
+  for (const r of set) for (const rel of releases) for (const m of MODELS) {
+    const p = get(r, rel.version, m);
+    if (p) lines.push([r.species, label(r.group), rel.version, rel.date, m, p.status, p.confidence === null ? "NA" : p.confidence]
+      .map(x => `"${String(x).replace(/"/g, '""')}"`).join(","));
+  }
+  const blob = new Blob([header.join(",") + "\n" + lines.join("\n") + "\n"], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `iucnn_predictions_${name}.csv`;
+  a.click();
+}
+
+// A link like #Atelopus%20zeteki opens that species, an empty hash opens the overview
+function route() {
+  const species = decodeURIComponent(location.hash.slice(1));
+  $("home").hidden = Boolean(species);
+  $("detail").hidden = !species;
+  if (species) renderDetail(species);
+  else renderTable();
+  window.scrollTo(0, 0);
+}
+
+for (const id of ["search", "group", "status", "disagree", "changed"]) $(id).oninput = () => { page = 0; renderTable(); };
+$("prev").onclick = () => { page--; renderTable(); };
+$("next").onclick = () => { page++; renderTable(); };
+$("download").onclick = () => download(selection, latest);
+window.onhashchange = route;
+
+load().catch(e => { $("count").textContent = "Could not load releases (" + e.message + ")."; });
+</script>
+</body>
+</html>

@@ -11,3 +11,4 @@
 !*/data/raw/.gitkeep
 /input/official/
 /input/human_footprint/
+*.keras

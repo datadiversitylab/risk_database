@@ -14,3 +14,5 @@
 *.keras
 input/*/cache/
 input/*/training_labels.csv
+Rplots.pdf
+*.log

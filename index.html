@@ -47,6 +47,7 @@
   <h1><a href="#" style="color:inherit;text-decoration:none">IUCNN risk database</a></h1>
   <p class="muted">Predicted extinction risk for species without an IUCN Red List assessment, made with <a href="https://github.com/IUCNN/IUCNN">IUCNN</a>. <span id="release-info"></span></p>
   <p class="note">These are provisional, machine learning predictions. They do not replace an official IUCN Red List assessment. Each species links to the IUCN Red List and to GBIF.</p>
+  <p class="muted" id="examples-toggle" hidden><label><input type="checkbox" id="examples"> Show IUCNN example data (internal, for testing the pipeline)</label></p>
 
   <section id="home">
     <h2>Summary</h2>
@@ -70,6 +71,10 @@
       <button class="plain" id="next">Next</button>
     </div>
 
+    <h2>Data sources</h2>
+    <p class="muted">How the input for each group in the latest release was assembled. The full record for each group is in its sources file.</p>
+    <table id="sources"></table>
+
     <h2>Full downloads</h2>
     <p class="muted">Complete predictions for the latest release, by group and model. Earlier releases are on each species page and in the repository under output/releases.</p>
     <ul class="files" id="files"></ul>
@@ -78,7 +83,7 @@
   <section id="detail" hidden></section>
 
   <footer>
-    Please cite predictions with their release version. Taxonomy follows the GBIF Backbone Taxonomy. Release history: <a href="output/releases/releases.csv">releases.csv</a>.
+    Please cite predictions with their release version. Taxonomy follows the Catalogue of Life Extended Release, as used by GBIF. Release history: <a href="output/releases/releases.csv">releases.csv</a>.
   </footer>
 </main>
 
@@ -93,6 +98,7 @@ const PAGE_SIZE = 50;
 
 let releases = [];
 let groupsByVersion = {};
+let internal = new Set();
 let rows = [];
 let latest, previous;
 let selection = [];
@@ -126,7 +132,11 @@ async function getCSV(path) {
   return parseCSV(await res.text());
 }
 
-const label = g => g.replace(/^\d+-/, "");
+const label = g => g.replace(/^\d+-/, "") + (internal.has(g) ? " (internal)" : "");
+
+// Internal groups only show when the toggle is on
+const visible = g => $("examples").checked || !internal.has(g);
+const shownGroups = () => groupsByVersion[latest].filter(visible);
 const color = s => `var(${COLORS[s] || "--OTHER"})`;
 const chip = s => s ? `<span class="chip" style="background:${color(s)}">${esc(s)}</span>` : `<span class="chip empty">·</span>`;
 const rank = s => ORDER.indexOf(s) === -1 ? ORDER.length : ORDER.indexOf(s);
@@ -152,6 +162,11 @@ async function load() {
     const groups = [...new Set(manifest.map(m => m.file.split("/")[0]))].filter(g => !SHARED.includes(g)).sort();
     groupsByVersion[r.version] = groups;
 
+    // Releases list their internal groups in groups.csv
+    try {
+      for (const x of await getCSV(`${ROOT}${r.version}/groups.csv`)) if (x.internal === "TRUE") internal.add(x.group);
+    } catch (e) {}
+
     await Promise.all(groups.flatMap(g => MODELS.map(async m => {
       let preds;
       try { preds = await getCSV(`${ROOT}${r.version}/${g}/predictions_${m}.csv`); }
@@ -169,30 +184,55 @@ async function load() {
 
   const r = releases[releases.length - 1];
   $("release-info").textContent = `Latest release ${r.version}, ${r.date}, IUCNN ${r.iucnn_version}.`;
-  renderSummary();
-  renderFiles();
+  $("examples-toggle").hidden = !internal.size;
+  renderHome();
   route();
 }
 
+async function renderHome() {
+  renderSummary();
+  renderFiles();
+  await renderSources();
+}
+
+// One row per group from the sources.csv written by build_input.R
+async function renderSources() {
+  let html = `<tr><th>Group</th><th>Assembled</th><th>Red List</th><th>Occurrences</th><th class="num">Training species</th><th class="num">Prediction species</th><th></th></tr>`;
+  for (const g of shownGroups()) {
+    const path = `${ROOT}${latest}/${g}/sources.csv`;
+    let s = null;
+    try { s = Object.fromEntries((await getCSV(path)).map(r => [r.item, r.value])); } catch (e) {}
+    if (!s) {
+      html += `<tr><td>${label(g)}</td><td colspan="6" class="muted">Not recorded</td></tr>`;
+      continue;
+    }
+    const doi = s.gbif_doi && s.gbif_doi !== "NA" ? `<a href="https://doi.org/${esc(s.gbif_doi)}">GBIF ${esc(s.gbif_doi)}</a>` : "GBIF";
+    html += `<tr><td>${label(g)}</td><td>${esc(s.assembled)}</td><td>Version ${esc(s.red_list_version)}</td><td>${doi}</td><td class="num">${Number(s.training_species).toLocaleString()}</td><td class="num">${Number(s.prediction_species).toLocaleString()}</td><td><a href="${path}">sources.csv</a></td></tr>`;
+  }
+  $("sources").innerHTML = html;
+}
+
 function renderSummary() {
-  const current = rows.filter(r => r.preds[latest]);
+  const current = rows.filter(r => r.preds[latest] && visible(r.group));
   const statuses = [...new Set(current.flatMap(r => statusesIn(r, latest)))].sort((a, b) => rank(a) - rank(b));
 
   let html = `<tr><th>Group</th><th class="num">Species</th>${MODELS.map(m => `<th class="num">Threatened (${m})</th>`).join("")}<th class="num">Models agree</th><th class="num">Changed since ${previous || "previous"}</th></tr>`;
-  for (const g of groupsByVersion[latest]) {
+  for (const g of shownGroups()) {
     const sub = current.filter(r => r.group === g);
     if (!sub.length) continue;
     const threatened = MODELS.map(m => {
       const has = sub.filter(r => get(r, latest, m));
       return pct(has.filter(r => THREATENED.includes(get(r, latest, m).status)).length, has.length);
     });
-    html += `<tr><td>${label(g)}</td><td class="num">${sub.length.toLocaleString()}</td>${threatened.map(x => `<td class="num">${x}</td>`).join("")}<td class="num">${pct(sub.filter(r => !disagrees(r)).length, sub.length)}</td><td class="num">${previous ? sub.filter(changed).length.toLocaleString() : "NA"}</td></tr>`;
+    html += `<tr><td>${label(g)}</td><td class="num">${sub.length.toLocaleString()}</td>${threatened.map(x => `<td class="num">${x}</td>`).join("")}<td class="num">${pct(sub.filter(r => !disagrees(r)).length, sub.length)}</td><td class="num">${previous && sub.some(r => r.preds[previous]) ? sub.filter(changed).length.toLocaleString() : "NA"}</td></tr>`;
   }
   $("summary").innerHTML = html;
   $("legend").innerHTML = statuses.map(chip).join("") + " Threatened means CR, EN, or VU.";
 
   $("status").innerHTML = `<option value="">Any status</option>` + statuses.map(s => `<option value="${esc(s)}">${esc(s)} in any model</option>`).join("");
-  $("group").innerHTML = `<option value="">All groups</option>` + groupsByVersion[latest].map(g => `<option value="${g}">${label(g)}</option>`).join("");
+  const keep = $("group").value;
+  $("group").innerHTML = `<option value="">All groups</option>` + shownGroups().map(g => `<option value="${g}">${label(g)}</option>`).join("");
+  $("group").value = shownGroups().includes(keep) ? keep : "";
 }
 
 function renderTable() {
@@ -200,6 +240,7 @@ function renderTable() {
   const g = $("group").value, s = $("status").value;
 
   selection = rows.filter(r => r.preds[latest]
+    && visible(r.group)
     && (!q || r.species.toLowerCase().includes(q))
     && (!g || r.group === g)
     && (!s || statusesIn(r, latest).includes(s))
@@ -235,7 +276,7 @@ function links(species) {
 }
 
 function renderFiles() {
-  $("files").innerHTML = groupsByVersion[latest].map(g =>
+  $("files").innerHTML = shownGroups().map(g =>
     `<li>${label(g)}: ${MODELS.map(m => `<a href="${ROOT}${latest}/${g}/predictions_${m}.csv">${m}</a>`).join(" · ")}</li>`).join("");
 }
 
@@ -291,6 +332,7 @@ for (const id of ["search", "group", "status", "disagree", "changed"]) $(id).oni
 $("prev").onclick = () => { page--; renderTable(); };
 $("next").onclick = () => { page++; renderTable(); };
 $("download").onclick = () => download(selection, latest);
+$("examples").onchange = () => { page = 0; renderHome(); renderTable(); };
 window.onhashchange = route;
 
 load().catch(e => { $("count").textContent = "Could not load releases (" + e.message + ")."; });

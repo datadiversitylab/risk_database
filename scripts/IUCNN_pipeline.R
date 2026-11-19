@@ -100,6 +100,20 @@ stopifnot(all(file.copy(
 # Input folders with all three data files
 required_files <- c("training_occ.csv", "training_labels.csv", "prediction_occ.csv")
 
+# Internal groups are released like any other but hidden on the website unless asked for
+internal_groups <- c("orchids_IUCNN")
+
+# The IUCNN example data is written from the package if its folder is missing
+example_dir <- here("input", "orchids_IUCNN")
+if (!all(file.exists(file.path(example_dir, required_files)))) {
+  example <- new.env()
+  utils::data("training_occ", "training_labels", "prediction_occ", package = "IUCNN", envir = example)
+  dir.create(example_dir, recursive = TRUE, showWarnings = FALSE)
+  for (name in c("training_occ", "training_labels", "prediction_occ")) {
+    write.csv(example[[name]], file.path(example_dir, paste0(name, ".csv")), row.names = FALSE)
+  }
+}
+
 input_dirs <- list.dirs(here("input"), recursive = FALSE, full.names = FALSE)
 
 has_data <- vapply(
@@ -182,6 +196,12 @@ for (folder in to_run) {
   message("Running ", folder)
   
   dir.create(file.path(out_root, folder), recursive = TRUE, showWarnings = FALSE)
+
+  # Provenance of the input travels with the predictions
+  sources_file <- here("input", folder, "sources.csv")
+  if (file.exists(sources_file)) {
+    stopifnot(file.copy(sources_file, file.path(out_root, folder, "sources.csv"), overwrite = TRUE))
+  }
   
   #Load data
   training_occ <- read.csv(here("input", folder, "training_occ.csv"))
@@ -282,6 +302,8 @@ for (folder in to_run) {
 if (run_mode == "release") {
   
   write.csv(manifest, file.path(out_root, "manifest.csv"), row.names = FALSE)
+  write.csv(data.frame(group = folders, internal = folders %in% internal_groups),
+            file.path(out_root, "groups.csv"), row.names = FALSE)
   writeLines(capture.output(sessionInfo()), file.path(out_root, "session_info.txt"))
   
   stopifnot(file.rename(out_root, file.path(releases_dir, release_version)))

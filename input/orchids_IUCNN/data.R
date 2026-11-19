@@ -7,6 +7,6 @@ data("training_labels")# the corresponding IUCN assessments
 data("prediction_occ") #occurrences from Not Evaluated species to prdict
 
 #export data from IUCNN
-write.csv(training_occ, here("input", "orchids", "training_occ.csv"))
-write.csv(training_labels, here("input", "orchids", "training_labels.csv"))
-write.csv(prediction_occ, here("input", "orchids", "prediction_occ.csv"))
+write.csv(training_occ, here("input", "orchids_IUCNN", "training_occ.csv"))
+write.csv(training_labels, here("input", "orchids_IUCNN", "training_labels.csv"))
+write.csv(prediction_occ, here("input", "orchids_IUCNN", "prediction_occ.csv"))

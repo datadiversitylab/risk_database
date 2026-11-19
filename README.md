@@ -5,25 +5,23 @@
 ```
 risk_database/
 ├── input/
-│   ├── 01-amphibians/
-│   ├── 02-reptiles/
-│   ├── 03-chondrichthyans/
-│   ├── 04-freshwater/
-│   ├── 05-orchids/
+│   ├── amphibians/
+│   ├── reptiles/
+│   ├── chondrichthyans/
+│   ├── freshwater/
+│   ├── orchids/
 │   │   ├── training_occ.csv
 │   │   ├── training_labels.csv
 │   │   └── prediction_occ.csv
-│   ├── 06-birds/
-│   ├── 07-mammals/
-│   ├── official/
-│   └── human_footprint/
+│   ├── birds/
+│   ├── mammals/
 ├── output/
 │   ├── test/
-│   │   └── 05-orchids/
+│   │   └── orchids/
 │   └── releases/
 │       ├── releases.csv
 │       └── v1/
-│           ├── 05-orchids/
+│           ├── orchids/
 │           │   ├── nn-class/
 │           │   ├── nn-reg/
 │           │   ├── bnn-class/

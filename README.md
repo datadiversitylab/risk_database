@@ -1,15 +1,5 @@
 # IUCNN risk database
 
-## Groups
-
-    amphibians
-    reptiles
-    chondrichthyans
-    freshwater
-    orchids
-    birds
-    mammals
-
 ## Structure
 
 ```
@@ -67,9 +57,9 @@ Each build writes `sources.csv` with the date, script commit, package versions, 
 
 The script needs an IUCN Red List API key and a GBIF account in `~/.Renviron` (`IUCN_REDLIST_KEY`, `GBIF_USER`, `GBIF_PWD`, `GBIF_EMAIL`). `training_labels.csv` and `cache/` are not in git because the Red List terms do not allow sharing its data. Anyone with an API key can rebuild them. `gbif_download.csv` stores the GBIF download, so a rebuild uses the same records. Delete it to request fresh data.
 
-`input/orchids_IUCNN/` holds the orchid example data from the IUCNN package. It is used to test the pipeline and is written from the package if the folder is missing. It is not built by `build_input.R`. Internal groups like this one are listed in `internal_groups` in `IUCNN_pipeline.R`. They are released like the other groups, but the website hides them unless "Show IUCNN example data" is checked.
+`input/orchids_IUCNN/` holds the orchid example data from the IUCNN package. It is used to test the pipeline. It is not built by `build_input.R`. Internal groups like this one are listed in `internal_groups` in `IUCNN_pipeline.R`. They are released like the other groups, but the website hides them unless "Show IUCNN example data" is checked.
 
-The WWF terrestrial ecoregions (`official/`) and the Human Footprint rasters for 1993 and 2009 (`human_footprint/`) are downloaded automatically the first time if they are missing. We use the same sources as IUCNN.
+The WWF terrestrial ecoregions (`official/`) and the Human Footprint rasters for 1993 and 2009 (`human_footprint/`) come from the same sources as IUCNN. The Human Footprint is downloaded automatically. The WWF file is behind a browser check, so it needs one manual step on each machine: download `official_teow.zip` from the [WWF page](https://www.worldwildlife.org/publications/terrestrial-ecoregions-of-the-world) and save it as `input/official_teow.zip`. The pipeline unzips it the first time it runs.
 
 ## Running
 

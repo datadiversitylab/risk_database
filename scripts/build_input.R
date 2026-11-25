@@ -31,6 +31,10 @@ checklist_key <- "7ddf754f-d193-4cc9-b351-99906754a03b"
 # Credentials are read from .Renviron
 stopifnot(nzchar(Sys.getenv(c("IUCN_REDLIST_KEY", "GBIF_USER", "GBIF_PWD", "GBIF_EMAIL"))))
 
+# GBIF name service. Requests at the same time, and seconds between them. Lower the first and raise the second if GBIF stops answering (Status: 0)
+gbif_parallel <- 1
+gbif_sleep <- 1
+
 labeled_categories <- c("LC", "NT", "VU", "EN", "CR")
 extinct_categories <- c("EX", "EW")
 cleaning_tests <- c("capitals", "centroids", "equal", "gbif", "institutions", "outliers", "seas", "zeros")
@@ -43,6 +47,42 @@ script_commit <- tryCatch(
   error = function(e) NA_character_,
   warning = function(w) NA_character_
 )
+
+# Matches names with the GBIF name service in small batches. Every answer is saved, so a failed batch is retried and a new run continues where the last one stopped
+match_names <- function(names, kingdom, cache_file, batch = 20, tries = 5) {
+  cache <- if (file.exists(cache_file)) readRDS(cache_file) else data.frame(verbatim_name = character(), matchType = character(), speciesKey = character())
+  todo <- setdiff(unique(names), cache$verbatim_name)
+  chunks <- split(todo, ceiling(seq_along(todo) / batch))
+
+  for (i in seq_along(chunks)) {
+    result <- NULL
+    for (k in seq_len(tries)) {
+      result <- tryCatch(
+        name_backbone_checklist(data.frame(scientificName = chunks[[i]]), kingdom = kingdom, checklistKey = checklist_key,
+                                bucket_size = gbif_parallel, sleep = gbif_sleep),
+        error = function(e) {
+          message("  GBIF did not answer (", conditionMessage(e), "), try ", k, " of ", tries)
+          NULL
+        }
+      )
+      if (!is.null(result)) break
+      Sys.sleep(15 * k)
+    }
+    if (is.null(result)) stop("GBIF did not answer after ", tries, " tries. Run the script again later, it continues from here")
+
+    result <- as.data.frame(result)
+    found <- data.frame(
+      verbatim_name = result$verbatim_name,
+      matchType = if (is.null(result$matchType)) NA_character_ else result$matchType,
+      speciesKey = if (is.null(result$speciesKey)) NA_character_ else as.character(result$speciesKey)
+    )
+    cache <- rbind(cache, found)
+    saveRDS(cache, cache_file)
+    message("  Names matched with GBIF: ", nrow(cache), " (", length(todo) - sum(lengths(chunks[seq_len(i)])), " left)")
+  }
+
+  cache[cache$verbatim_name %in% names, ]
+}
 
 build_group <- function(group) {
 
@@ -98,26 +138,7 @@ build_group <- function(group) {
   # Species only, subspecies and subpopulations have more than two words
   iucn <- iucn[lengths(strsplit(iucn$iucn_name, " ")) == 2, ]
 
-  # 2. Match Red List names to COL XR, only exact matches are kept
-  matched <- as.data.frame(name_backbone_checklist(
-    data.frame(scientificName = unique(iucn$iucn_name)),
-    kingdom = kingdom,
-    checklistKey = checklist_key
-  ))
-
-  exact <- matched[matched$matchType == "EXACT" & !is.na(matched$speciesKey), ]
-  iucn$speciesKey <- exact$speciesKey[match(iucn$iucn_name, exact$verbatim_name)]
-
-  unmatched <- iucn[is.na(iucn$speciesKey), ]
-  iucn <- iucn[!is.na(iucn$speciesKey), ]
-
-  # Two Red List names can be synonyms of one accepted species, conflicting categories are dropped
-  n_categories <- tapply(iucn$category, iucn$speciesKey, function(x) length(unique(x)))
-  conflicts <- names(n_categories)[n_categories > 1]
-  conflicting <- iucn[iucn$speciesKey %in% conflicts, ]
-  iucn <- iucn[!iucn$speciesKey %in% conflicts & !duplicated(iucn$speciesKey), ]
-
-  # 3. GBIF occurrences, one row per species and grid cell
+  # 2. GBIF occurrences, one row per species and grid cell
   taxon_filter <- paste(sprintf("%s = '%s'",
                                 ifelse(definition$gbif_rank == "order", '"order"', definition$gbif_rank),
                                 definition$gbif_taxon), collapse = " OR ")
@@ -155,6 +176,30 @@ build_group <- function(group) {
   )
   occ <- occ[!is.na(occ$species) & occ$species != "", ]
   n_cells_raw <- nrow(occ)
+
+  # 3. Match Red List names to COL XR, only exact matches are kept
+  # Names that are accepted species in the download are matched here, the rest (synonyms, species without records) by the GBIF name service
+  keys_by_name <- tapply(occ$speciesKey, occ$species, function(k) unique(k), simplify = FALSE)
+  local_names <- names(keys_by_name)[lengths(keys_by_name) == 1]
+  iucn$speciesKey <- vapply(iucn$iucn_name, function(n) if (n %in% local_names) keys_by_name[[n]] else NA_character_, character(1), USE.NAMES = FALSE)
+  n_local <- sum(!is.na(iucn$speciesKey))
+
+  ask <- unique(iucn$iucn_name[is.na(iucn$speciesKey)])
+  message("  ", n_local, " Red List names found in the GBIF download, ", length(ask), " sent to the GBIF name service")
+  matched <- match_names(ask, kingdom, file.path(cache_dir, paste0("gbif_names_", stored$key, ".rds")))
+  exact <- matched[!is.na(matched$matchType) & matched$matchType == "EXACT" & !is.na(matched$speciesKey), ]
+  todo <- is.na(iucn$speciesKey)
+  iucn$speciesKey[todo] <- exact$speciesKey[match(iucn$iucn_name[todo], exact$verbatim_name)]
+  n_service <- sum(!is.na(iucn$speciesKey)) - n_local
+
+  unmatched <- iucn[is.na(iucn$speciesKey), ]
+  iucn <- iucn[!is.na(iucn$speciesKey), ]
+
+  # Two Red List names can be synonyms of one accepted species, conflicting categories are dropped
+  n_categories <- tapply(iucn$category, iucn$speciesKey, function(x) length(unique(x)))
+  conflicts <- names(n_categories)[n_categories > 1]
+  conflicting <- iucn[iucn$speciesKey %in% conflicts, ]
+  iucn <- iucn[!iucn$speciesKey %in% conflicts & !duplicated(iucn$speciesKey), ]
 
   # 4. Coordinate cleaning
   occ <- clean_coordinates(
@@ -204,7 +249,7 @@ build_group <- function(group) {
     "taxonomy", "taxonomy_checklist_key", "name_matching",
     "gbif_download_key", "gbif_doi", "gbif_citation", "gbif_sql",
     "grid_resolution_degrees", "excluded_basis_of_record", "cleaning_tests",
-    "red_list_assessments", "red_list_names_unmatched", "species_conflicting",
+    "red_list_assessments", "red_list_names_matched_in_download", "red_list_names_matched_by_service", "red_list_names_unmatched", "species_conflicting",
     "occurrence_cells_before_cleaning", "occurrence_cells_after_cleaning",
     "training_species", "training_cells", "prediction_species", "prediction_species_dd", "prediction_species_unassessed", "prediction_cells"
   ), value = c(
@@ -213,10 +258,11 @@ build_group <- function(group) {
     paste(definition$iucn_rank, definition$iucn_taxon, collapse = "; "),
     paste(definition$gbif_rank, definition$gbif_taxon, collapse = "; "), kingdom,
     red_list_version, red_list_citation, "Global, latest assessment per species",
-    "Catalogue of Life Extended Release (COL XR) via GBIF", checklist_key, "Exact matches only, conflicting categories dropped",
+    "Catalogue of Life Extended Release (COL XR) via GBIF", checklist_key,
+    "Exact names in the GBIF download first, then the GBIF name service. Exact matches only, conflicting categories dropped",
     stored$key, doi, sprintf("GBIF.org (%s) GBIF Occurrence Download https://doi.org/%s", created, doi), sql,
     resolution, paste(excluded_basis, collapse = "; "), paste(cleaning_tests, collapse = "; "),
-    n_assessments, nrow(unmatched), length(conflicts),
+    n_assessments, n_local, n_service, nrow(unmatched), length(conflicts),
     n_cells_raw, nrow(occ),
     nrow(training_labels), nrow(training_occ), length(prediction_keys), n_dd, length(prediction_keys) - n_dd, nrow(prediction_occ)
   ))
